@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="AS2\**" />
+    <EmbeddedResource Remove="AS2\**" />
+    <None Remove="AS2\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="AS2Listener.ashx.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="AS2Listener.ashx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MimeKit" Version="2.1.3" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AS2_Proof_of_Concept.WebAPI\AS2_Proof_of_Concept.WebAPI.csproj" />
+  </ItemGroup>
+
+</Project>
