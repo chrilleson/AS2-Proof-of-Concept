@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 
 namespace AS2_Proof_of_Concept.WebAPI.AS2
 {
@@ -35,7 +37,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             ContentInfo contentInfo = new ContentInfo(message);
 
             EnvelopedCms envelopedCms = new EnvelopedCms(contentInfo,
-                new AlgorithmIdentifier(new System.Security.Cryptography.Oid(encryptionAlgorithm))); // should be 3DES or RC2
+                new AlgorithmIdentifier(new Oid(encryptionAlgorithm))); // should be 3DES or RC2
 
             CmsRecipient recipient = new CmsRecipient(SubjectIdentifierType.IssuerAndSerialNumber, recipientCert);
 
@@ -47,12 +49,29 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         }
 
 
-        public static byte[] Decrypt(byte[] encodedEncryptedMessage)
+        public static byte[] Decrypt(byte[] encodedEncryptedMessage, X509Certificate2 recipientCert)
         {
             EnvelopedCms envelopedCms = new EnvelopedCms();
             envelopedCms.Decode(encodedEncryptedMessage);
-            envelopedCms.Decrypt();
+            envelopedCms.Decrypt(new X509Certificate2Collection(recipientCert));
             return envelopedCms.ContentInfo.Content;
+        }
+
+        public static string CalculateMic(string content, string micAlg)
+        {
+            content = content.Contains("\r") ? content : content.Replace("\n", "\r\n");
+            switch (micAlg)
+            {
+                case "sha1":
+                case "sha-1":
+                    var sha1 = SHA1.Create();
+                    return Convert.ToBase64String(sha1.ComputeHash(Encoding.ASCII.GetBytes(content)));
+                case "sha256":
+                case "sha-256":
+                    var sha256 = SHA256.Create();
+                    return Convert.ToBase64String(sha256.ComputeHash(Encoding.ASCII.GetBytes(content)));
+            }
+            return "";
         }
     }
 }

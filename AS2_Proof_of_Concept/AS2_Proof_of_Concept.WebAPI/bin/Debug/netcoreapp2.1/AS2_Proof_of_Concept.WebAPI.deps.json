@@ -24,7 +24,6 @@
     ".NETCoreApp,Version=v2.1": {
       "AS2_Proof_of_Concept.WebAPI/1.0.0": {
         "dependencies": {
-          "AS2_Proof_of_Concept.WebApplication": "1.0.0",
           "Microsoft.AspNetCore.App": "2.1.1",
           "Microsoft.AspNetCore.Razor.Design": "2.1.2",
           "Microsoft.NETCore.App": "2.1.0",
@@ -536,14 +535,6 @@
         },
         "compile": {
           "ref/netcoreapp2.1/System.Security.Cryptography.Pkcs.dll": {}
-        }
-      },
-      "AS2_Proof_of_Concept.WebApplication/1.0.0": {
-        "runtime": {
-          "AS2_Proof_of_Concept.WebApplication.dll": {}
-        },
-        "compile": {
-          "AS2_Proof_of_Concept.WebApplication.dll": {}
         }
       },
       "Microsoft.AspNet.WebApi.Client/5.2.6": {
@@ -3676,11 +3667,6 @@
       "sha512": "sha512-lIo52x0AAsZs8r1L58lPXaqN6PP51Z/XJts0kZtbZRNYcMguupxqRGjvc/GoqSKTbYa+aBwbkT4xoqQ7EsfN0A==",
       "path": "system.security.cryptography.pkcs/4.5.2",
       "hashPath": "system.security.cryptography.pkcs.4.5.2.nupkg.sha512"
-    },
-    "AS2_Proof_of_Concept.WebApplication/1.0.0": {
-      "type": "project",
-      "serviceable": false,
-      "sha512": ""
     },
     "Microsoft.AspNet.WebApi.Client/5.2.6": {
       "type": "package",

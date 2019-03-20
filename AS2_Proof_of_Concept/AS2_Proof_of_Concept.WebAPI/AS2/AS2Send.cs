@@ -64,10 +64,10 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("Subject", filename + " transmission.");
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
             http.Headers.Add("Recipient-adress", "http://testas2.mendelson-e-c.com:8080/as2/HttpReceiver");
-            //http.Headers.Add("Receipt-delivery-option", "https://as2proofofconceptwebapplication20190307102507.azurewebsites.net/AS2Listener.ashx");
             http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
+            //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
             http.Headers.Add("Disposition-notification-to", partner);
-            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha256");
+            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha-256");
             http.Timeout = timeoutMs;
 
             string contentType = (Path.GetExtension(filename) == ".xml") ? "application/xml" : "application/EDIFACT";
@@ -105,38 +105,89 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 contentType = "application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"";
             }
 
+            byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(content, recipientCert);
+            string decodedMessage =
+                Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
+
             http.ContentType = contentType;
             http.ContentLength = content.Length;
 
             SendWebRequest(http, content);
 
-            return HandleWebResponse(http);
+            return HandleWebResponse(http, decodedMessage);
         }
 
-        private static HttpStatusCode HandleWebResponse(HttpWebRequest http)
+        private static HttpStatusCode HandleWebResponse(HttpWebRequest http, string decodedMessage)
         {
-            HttpWebResponse response = (HttpWebResponse)http.GetResponse();
+            try
+            {
+                HttpWebResponse response = (HttpWebResponse)http.GetResponse();
 
-            //const string pwd = "MyCert";
-            //SecureString securePwd = new SecureString();
-            //Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
-            //securePwd.MakeReadOnly();
-            //X509Certificate2 recipientCert = new X509Certificate2(@"c:\files\certs\MyPrivateCert.pfx", securePwd);
+                int length = (int)response.ContentLength;
+                byte[] data = new byte[length];
+                response.GetResponseStream()?.Read(data, 0, length);
 
-            int length = (int)response.ContentLength;
-            byte[] data = new byte[length];
-            response.GetResponseStream()?.Read(data, 0, length);
+                string mdnResponse = Encoding.ASCII.GetString(data);
+                string mdnHeaders = response.Headers.ToString();
 
-            //SignedCms signedCms = new SignedCms();
-            //signedCms.Decode(data);
-            //signedCms.CheckSignature(new X509Certificate2Collection(recipientCert), false);
+                if (string.IsNullOrEmpty(mdnHeaders) || string.IsNullOrEmpty(mdnResponse))
+                    throw new WebException();
 
-            string mdnResponse = Encoding.ASCII.GetString(data);
-            string mdnHeaders = response.Headers.ToString();
+                bool mdnVerification = MdnVerification(mdnResponse, http, decodedMessage);
 
-            File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "MDN", mdnResponse + mdnHeaders);
+                if (mdnVerification)
+                {
+                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
+                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+                    return response.StatusCode;
+                }
 
-            return response.StatusCode;
+                File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
+                File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+
+                return response.StatusCode;
+            }
+            catch (WebException)
+            {
+                return HttpStatusCode.InternalServerError;
+            }
+
+        }
+
+        /****** https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *****/
+        private static bool MdnVerification(string mdnMessage, HttpWebRequest http, string decodedMesage)
+        {
+            #region MicCheck
+
+            string messageDigest = http.Headers["Disposition-notification-options"]
+                .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
+                .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
+            string calculatedMic = As2Encryption.CalculateMic(decodedMesage, messageDigest);
+
+            int micStart = mdnMessage.IndexOf("MIC: ", StringComparison.Ordinal);
+            micStart += 5;
+            int micEnd = mdnMessage.IndexOf(messageDigest, StringComparison.Ordinal);
+            micEnd = micEnd - 2;
+            int micLength = micEnd - micStart;
+            string receivedMic = mdnMessage.Substring(micStart, micLength);
+            bool micVerified = receivedMic == calculatedMic;
+
+            #endregion
+
+            #region MessageIdCheck
+
+            string originalMessageId = http.Headers["Message-ID"];
+
+            int messageIdStart = mdnMessage.IndexOf("ID: ", StringComparison.Ordinal);
+            messageIdStart += 4;
+            int messageIdEnd = mdnMessage.IndexOf("\r\nDisposition: ", StringComparison.Ordinal);
+            int messageLength = messageIdEnd - messageIdStart;
+            string receivedMessageId = mdnMessage.Substring(messageIdStart, messageLength);
+            bool messageIdVerified = receivedMessageId == originalMessageId;
+
+            #endregion
+
+            return micVerified && messageIdVerified;
         }
 
         public static void SendWebRequest(HttpWebRequest http, byte[] fileData)

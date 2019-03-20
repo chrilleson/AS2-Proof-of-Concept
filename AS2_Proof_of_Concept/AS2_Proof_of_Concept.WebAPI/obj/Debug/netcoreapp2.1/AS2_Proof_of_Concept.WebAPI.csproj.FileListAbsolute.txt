@@ -12,7 +12,3 @@ C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.pdb
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.dll
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.pdb
-C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebApplication.dll
-C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebApplication.pdb
-C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebApplication.dll.config
-C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.csproj.CopyComplete
