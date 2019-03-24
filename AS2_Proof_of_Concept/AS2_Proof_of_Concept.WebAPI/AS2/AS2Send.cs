@@ -53,7 +53,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.PreAuthenticate = false; //Means there will be two requests sent if Authentication required.
             http.SendChunked = false;
 
-            http.UserAgent = "mendelson AS2 Server 2019 build 364";
+            http.UserAgent = "Test Agent";
 
 
             //These Headers are common localStation all transactions
@@ -63,11 +63,11 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("AS2-To", localStation);
             http.Headers.Add("Subject", filename + " transmission.");
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
-            http.Headers.Add("Recipient-adress", "http://testas2.mendelson-e-c.com:8080/as2/HttpReceiver");
+            http.Headers.Add("Recipient-adress", "https://localhost:44333/api/as2");
             http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
             http.Headers.Add("Disposition-notification-to", partner);
-            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha-256");
+            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=Required, pkcs7-signature; signed-receipt-micalg=Required, sha-256");
             http.Timeout = timeoutMs;
 
             string contentType = (Path.GetExtension(filename) == ".xml") ? "application/xml" : "application/EDIFACT";
@@ -133,17 +133,18 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 if (string.IsNullOrEmpty(mdnHeaders) || string.IsNullOrEmpty(mdnResponse))
                     throw new WebException();
 
-                bool mdnVerification = MdnVerification(mdnResponse, http, decodedMessage);
+                bool mdnVerification = MdnVerification(mdnResponse, decodedMessage, http);
 
                 if (mdnVerification)
                 {
                     File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
                     File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
-                    return response.StatusCode;
                 }
-
-                File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
-                File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+                else
+                {
+                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
+                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+                }
 
                 return response.StatusCode;
             }
@@ -154,15 +155,17 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
         }
 
-        /****** https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *****/
-        private static bool MdnVerification(string mdnMessage, HttpWebRequest http, string decodedMesage)
+        /****** MDN gets verified 2/3 ways according to
+         * https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *
+         ******/
+        private static bool MdnVerification(string mdnMessage, string decodedMessage, HttpWebRequest http)
         {
             #region MicCheck
 
             string messageDigest = http.Headers["Disposition-notification-options"]
                 .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
                 .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
-            string calculatedMic = As2Encryption.CalculateMic(decodedMesage, messageDigest);
+            string calculatedMic = As2Encryption.CalculateMic(decodedMessage, messageDigest);
 
             int micStart = mdnMessage.IndexOf("MIC: ", StringComparison.Ordinal);
             micStart += 5;

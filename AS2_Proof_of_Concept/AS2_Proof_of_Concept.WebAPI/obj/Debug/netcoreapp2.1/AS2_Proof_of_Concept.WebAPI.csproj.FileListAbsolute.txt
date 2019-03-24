@@ -2,7 +2,6 @@ C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.runtimeconfig.json
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.runtimeconfig.dev.json
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.dll
-C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.csprojAssemblyReference.cache
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.csproj.CoreCompileInputs.cache
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.RazorAssemblyInfo.cache
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.RazorAssemblyInfo.cs
@@ -12,3 +11,4 @@ C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\bin\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.pdb
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.dll
 C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.pdb
+C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\obj\Debug\netcoreapp2.1\AS2_Proof_of_Concept.WebAPI.csprojAssemblyReference.cache

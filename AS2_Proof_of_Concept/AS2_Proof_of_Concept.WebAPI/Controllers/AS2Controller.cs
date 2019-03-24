@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Security;
 using System.Security.Cryptography;
@@ -24,12 +24,12 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
         [Consumes("application/pkcs7-mime")]
         public void IncomingMessage()
         {
-            const string pwd = "MyCert";
+            const string pwd = "MyPrivateKey";
             SecureString securePwd = new SecureString();
             Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
             securePwd.MakeReadOnly();
-            X509Certificate2 recipientCert = new X509Certificate2(@"C:\files\certs\MyPrivateCert.pfx", securePwd);
-            X509Certificate2 senderCert = new X509Certificate2(@"c:\files\certs\MyPartnersPrivateCert.pfx", "MyPartnersKey");
+            X509Certificate2 recipientCert = new X509Certificate2(@"C:\\files\\certs\\MyPrivateCert.pfx", securePwd);
+            X509Certificate2 senderCert = new X509Certificate2(@"C:\\files\\certs\\MyPublicCert.cer");
 
             if (Request.ContentLength == null) return;
 
@@ -56,7 +56,7 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 byte[] bReceivedSignature = Encoding.ASCII.GetBytes(receivedSignature);
 
                 //Verifies the signature
-                ContentInfo contentInfo = new ContentInfo(encodedUnencryptedMessage);
+                ContentInfo contentInfo = new ContentInfo(requestBody);
                 SignedCms signedCms = new SignedCms(contentInfo, true);
                 signedCms.Decode(Convert.FromBase64String(receivedSignature.Split(new[] { "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)[0]));
                 signedCms.CheckSignature(new X509Certificate2Collection(senderCert), true);
