@@ -84,6 +84,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         {
             return CreateMessage(sContentType, sEncoding, sDisposition, out _, abMessageParts);
         }
+
         /// <summary>
         /// Create a Message out of byte arrays (this makes more sense than the above method)
         /// </summary>
@@ -165,11 +166,11 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             // Define the boundary byte array.
             byte[] bBoundary = Encoding.ASCII.GetBytes("\r\n" + "--" + sBoundary + "\r\n");
 
-            // Encode the header for the signature portion.
+            // Sign the header for the signature portion.
             byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("protocol=application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment; filename=\"smime.p7s\""));
 
             // Get the signature.
-            byte[] bSignature = As2Encryption.Encode(arMessage, cert);
+            byte[] bSignature = As2Encryption.Sign(arMessage, cert);
 
             // convert to base64
             var wholeText = Convert.ToBase64String(bSignature);

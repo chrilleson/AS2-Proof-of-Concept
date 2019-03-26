@@ -14,7 +14,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
     public class As2Encryption
     {
-        internal static byte[] Encode(byte[] arMessage, X509Certificate2 signingCert)
+        internal static byte[] Sign(byte[] arMessage, X509Certificate2 signingCert)
         {
             ContentInfo contentInfo = new ContentInfo(arMessage);
             SignedCms signedCms = new SignedCms(contentInfo, false); // <- true detaches the signature
@@ -48,7 +48,6 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             return encoded;
         }
 
-
         public static byte[] Decrypt(byte[] encodedEncryptedMessage, X509Certificate2 recipientCert)
         {
             EnvelopedCms envelopedCms = new EnvelopedCms();
@@ -62,6 +61,10 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             content = content.Contains("\r") ? content : content.Replace("\n", "\r\n");
             switch (micAlg)
             {
+                case"md5":
+                case"md-5":
+                    var md5 = MD5.Create();
+                    return Convert.ToBase64String(md5.ComputeHash(Encoding.ASCII.GetBytes(content)));
                 case "sha1":
                 case "sha-1":
                     var sha1 = SHA1.Create();

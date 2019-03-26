@@ -16,7 +16,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
     public class As2Send
     {
-        public static HttpStatusCode SendFile(Uri uri, string filename, byte[] fileData, string partner, string localStation, ProxySettings proxySettings, int timeoutMs, X509Certificate2 signingCert, X509Certificate2 recipientCert)
+        public static HttpStatusCode SendFile(Uri uri, string filename, byte[] fileData, string sender, string receiver, ProxySettings proxySettings, int timeoutMs, X509Certificate2 signingCert, X509Certificate2 recipientCert)
         {
             if (string.IsNullOrEmpty(filename)) throw new ArgumentNullException(nameof(filename));
 
@@ -56,18 +56,18 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.UserAgent = "Test Agent";
 
 
-            //These Headers are common localStation all transactions
+            //These Headers are common receiver all transactions
             http.Headers.Add("Mime-Version", "1.0");
             http.Headers.Add("AS2-Version", "1.2");
-            http.Headers.Add("AS2-From", partner);
-            http.Headers.Add("AS2-To", localStation);
+            http.Headers.Add("AS2-From", sender);
+            http.Headers.Add("AS2-To", receiver);
             http.Headers.Add("Subject", filename + " transmission");
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
             http.Headers.Add("Recipient-adress", uri.ToString());
             http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
-            http.Headers.Add("Disposition-notification-to", partner);
-            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha-256");
+            http.Headers.Add("Disposition-notification-to", sender);
+            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, md5");
             http.Timeout = timeoutMs;
 
             string contentType = (Path.GetExtension(filename) == ".xml") ? "application/xml" : "application/EDIFACT";
@@ -105,19 +105,25 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 contentType = "application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"";
             }
 
-            byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(content, recipientCert);
-            string decodedMessage =
-                Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
-
             http.ContentType = contentType;
             http.ContentLength = content.Length;
 
             SendWebRequest(http, content);
 
-            return HandleWebResponse(http, decodedMessage);
+            byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(content, recipientCert);
+
+            return HandleWebResponse(http, encodedUnencryptedMessage);
         }
 
-        private static HttpStatusCode HandleWebResponse(HttpWebRequest http, string decodedMessage)
+        public static void SendWebRequest(HttpWebRequest http, byte[] fileData)
+        {
+            Stream oRequestStream = http.GetRequestStream();
+            oRequestStream.Write(fileData, 0, fileData.Length);
+            oRequestStream.Flush();
+            oRequestStream.Close();
+        }
+
+        private static HttpStatusCode HandleWebResponse(HttpWebRequest http, byte[] encodedUnencryptedMessage)
         {
             try
             {
@@ -133,23 +139,25 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 if (string.IsNullOrEmpty(mdnHeaders) || string.IsNullOrEmpty(mdnResponse))
                     throw new WebException();
 
-                bool mdnVerification = MdnVerification(mdnResponse, decodedMessage, http);
+                bool mdnVerification = MdnVerification(mdnResponse, encodedUnencryptedMessage, http);
 
+                //If the MDN is verified it will be stored in the verified folder
                 if (mdnVerification)
                 {
-                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
-                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + " MDN.MDN", mdnResponse);
+                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + " Headers.MDN", mdnHeaders);
                 }
                 else
                 {
-                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "MDN.MDN", mdnResponse);
-                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + "Headers.MDN", mdnHeaders);
+                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + " MDN.MDN", mdnResponse);
+                    File.WriteAllText(@"c:\files\MDN\" + http.Headers["Subject"] + " Headers.MDN", mdnHeaders);
                 }
 
                 return response.StatusCode;
             }
-            catch (WebException)
+            catch (WebException e)
             {
+                Console.WriteLine("\n" + e.Message);
                 return HttpStatusCode.InternalServerError;
             }
 
@@ -158,47 +166,48 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         /****** MDN gets verified 2/3 ways according to
          * https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *
          ******/
-        private static bool MdnVerification(string mdnMessage, string decodedMessage, HttpWebRequest http)
+        private static bool MdnVerification(string mdnMessage, byte[] encodedUnencryptedMessage, HttpWebRequest http)
         {
             #region MicCheck
 
+            //Calculates the senders MIC
             string messageDigest = http.Headers["Disposition-notification-options"]
                 .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
                 .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
+            string decodedMessage =
+                Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
+
             string calculatedMic = As2Encryption.CalculateMic(decodedMessage, messageDigest);
 
+            //Retrieves the calculated MIC value that's inside of the MDN
             int micStart = mdnMessage.IndexOf("MIC: ", StringComparison.Ordinal);
             micStart += 5;
             int micEnd = mdnMessage.IndexOf(messageDigest, StringComparison.Ordinal);
             micEnd = micEnd - 2;
             int micLength = micEnd - micStart;
             string receivedMic = mdnMessage.Substring(micStart, micLength);
+
             bool micVerified = receivedMic == calculatedMic;
 
             #endregion
 
             #region MessageIdCheck
 
+            //Retrieves the senders Message ID
             string originalMessageId = http.Headers["Message-ID"];
 
+            //Retrieves the original message ID value that's inside of the MDN
             int messageIdStart = mdnMessage.IndexOf("ID: ", StringComparison.Ordinal);
             messageIdStart += 4;
             int messageIdEnd = mdnMessage.IndexOf("\r\nDisposition: ", StringComparison.Ordinal);
             int messageLength = messageIdEnd - messageIdStart;
             string receivedMessageId = mdnMessage.Substring(messageIdStart, messageLength);
+
             bool messageIdVerified = receivedMessageId == originalMessageId;
 
             #endregion
 
             return micVerified && messageIdVerified;
-        }
-
-        public static void SendWebRequest(HttpWebRequest http, byte[] fileData)
-        {
-            Stream oRequestStream = http.GetRequestStream();
-            oRequestStream.Write(fileData, 0, fileData.Length);
-            oRequestStream.Flush();
-            oRequestStream.Close();
         }
     }
 }

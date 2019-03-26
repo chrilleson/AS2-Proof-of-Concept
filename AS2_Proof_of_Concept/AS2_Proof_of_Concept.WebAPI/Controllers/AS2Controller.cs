@@ -21,15 +21,16 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
         }
 
         [HttpPost]
-        //[Consumes("application/pkcs7-mime")]
+        [Consumes("application/pkcs7-mime")]
         public void IncomingMessage()
         {
-            const string pwd = "MyPrivateKey";
+
+            const string pwd = "MyPartnersKey";
             SecureString securePwd = new SecureString();
             Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
             securePwd.MakeReadOnly();
-            X509Certificate2 encryptionCert = new X509Certificate2(@"C:\\files\\certs\\MyPrivateCert.pfx", securePwd);
-            X509Certificate2 certUsedForSigning = new X509Certificate2(@"C:\\files\\certs\\MyPartnersPublicCert.cer");
+            X509Certificate2 decryptionCert = new X509Certificate2(@"C:\\files\\certs\\MyPartnersPrivateCert.pfx", securePwd);
+            X509Certificate2 verifySignatureCert = new X509Certificate2(@"C:\\files\\certs\\MyPublicCert.cer");
 
             if (Request.ContentLength == null) return;
 
@@ -42,7 +43,7 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
             try
             {
                 //Decrypt the message
-                byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(requestBody, encryptionCert);
+                byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(requestBody, decryptionCert);
 
                 #region Extracts and Verifies the signature
 
@@ -60,15 +61,17 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 ContentInfo contentInfo = new ContentInfo(encodedUnencryptedMessage);
                 SignedCms signedCms = new SignedCms(contentInfo, false);
                 signedCms.Decode(Convert.FromBase64String(receivedSignature.Split(new[] { "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)[0]));
-                signedCms.CheckSignature(new X509Certificate2Collection(certUsedForSigning), true);
-
-                string decodedMessage = Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
-                string payload = Encoding.ASCII.GetString(signedCms.ContentInfo.Content, 0, signedCms.ContentInfo.Content.Length);
-
-                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + "FullMessage.txt", decodedMessage);
-                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + "Payload.txt", payload);
+                signedCms.CheckSignature(new X509Certificate2Collection(verifySignatureCert), true);
 
                 #endregion
+                
+                string payload = Encoding.ASCII.GetString(signedCms.ContentInfo.Content, 0, signedCms.ContentInfo.Content.Length);
+                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + " Payload.txt", payload);
+
+                string decodedMessage = Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
+                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + " RawMessageDecrypted.txt", decodedMessage);
+
+                #region MDN message
 
                 if (!string.IsNullOrEmpty(Request.Headers["Disposition-notification-to"].ToString()))
                 {
@@ -83,9 +86,10 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                     #endregion
 
                     #region Create the MDN
-
+                    
+                    //Create the content of the MDN message
                     var boundary = As2MimeUtilities.MimeBoundary();
-                    var mdnMessage = new StringBuilder("Content-Type: multipart/report; report-type=disposition-notification; \r\n\t")
+                    var mdnMessage = new StringBuilder("Content-Type: multipart/report; report-type=disposition-notification; \r\n")
                         .Append("boundary=\"").Append(boundary).Append("\"\r\n\r\n")
                         .Append("--").Append(boundary).Append("\r\n")
                         .Append("Content-Type: text/plain\r\n")
@@ -104,7 +108,7 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
 
                     byte[] content = Encoding.ASCII.GetBytes(mdnMessage.ToString());
 
-                    content = As2MimeUtilities.Sign(content, encryptionCert, out var contentType);
+                    content = As2MimeUtilities.Sign(content, decryptionCert, out var contentType);
 
                     #endregion
 
@@ -127,6 +131,8 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                     Response.Body.Flush();
                     Response.Body.Dispose();
                 }
+
+                #endregion
 
                 Request.Body.Flush();
                 Request.Body.Dispose();
