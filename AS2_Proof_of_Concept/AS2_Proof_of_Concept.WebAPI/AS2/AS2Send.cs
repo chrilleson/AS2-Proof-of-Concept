@@ -61,13 +61,13 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("AS2-Version", "1.2");
             http.Headers.Add("AS2-From", partner);
             http.Headers.Add("AS2-To", localStation);
-            http.Headers.Add("Subject", filename + " transmission.");
+            http.Headers.Add("Subject", filename + " transmission");
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
-            http.Headers.Add("Recipient-adress", "https://localhost:44333/api/as2");
+            http.Headers.Add("Recipient-adress", uri.ToString());
             http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
             http.Headers.Add("Disposition-notification-to", partner);
-            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=Required, pkcs7-signature; signed-receipt-micalg=Required, sha-256");
+            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha-256");
             http.Timeout = timeoutMs;
 
             string contentType = (Path.GetExtension(filename) == ".xml") ? "application/xml" : "application/EDIFACT";

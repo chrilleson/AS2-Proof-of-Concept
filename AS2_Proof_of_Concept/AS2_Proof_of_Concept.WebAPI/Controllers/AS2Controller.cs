@@ -21,15 +21,15 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
         }
 
         [HttpPost]
-        [Consumes("application/pkcs7-mime")]
+        //[Consumes("application/pkcs7-mime")]
         public void IncomingMessage()
         {
             const string pwd = "MyPrivateKey";
             SecureString securePwd = new SecureString();
             Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
             securePwd.MakeReadOnly();
-            X509Certificate2 recipientCert = new X509Certificate2(@"C:\\files\\certs\\MyPrivateCert.pfx", securePwd);
-            X509Certificate2 senderCert = new X509Certificate2(@"C:\\files\\certs\\MyPublicCert.cer");
+            X509Certificate2 encryptionCert = new X509Certificate2(@"C:\\files\\certs\\MyPrivateCert.pfx", securePwd);
+            X509Certificate2 certUsedForSigning = new X509Certificate2(@"C:\\files\\certs\\MyPartnersPublicCert.cer");
 
             if (Request.ContentLength == null) return;
 
@@ -38,9 +38,11 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
             string filename = Request.Headers["Subject"];
             Request.Body.Read(requestBody, 0, length);
 
+
             try
             {
-                byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(requestBody, senderCert);
+                //Decrypt the message
+                byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(requestBody, encryptionCert);
 
                 #region Extracts and Verifies the signature
 
@@ -53,23 +55,20 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 string innerContent = As2MimeUtilities.ExtractPayload(messageWithContentTypeLineAndMimeHeaders, getBoundary);
                 innerContent = innerContent + "\r\n\r\n--" + getBoundary + "--";
                 string receivedSignature = As2MimeUtilities.ExtractPayload(innerContent, getBoundary);
-                byte[] bReceivedSignature = Encoding.ASCII.GetBytes(receivedSignature);
 
                 //Verifies the signature
-                ContentInfo contentInfo = new ContentInfo(requestBody);
-                SignedCms signedCms = new SignedCms(contentInfo, true);
+                ContentInfo contentInfo = new ContentInfo(encodedUnencryptedMessage);
+                SignedCms signedCms = new SignedCms(contentInfo, false);
                 signedCms.Decode(Convert.FromBase64String(receivedSignature.Split(new[] { "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)[0]));
-                signedCms.CheckSignature(new X509Certificate2Collection(senderCert), true);
+                signedCms.CheckSignature(new X509Certificate2Collection(certUsedForSigning), true);
+
+                string decodedMessage = Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
+                string payload = Encoding.ASCII.GetString(signedCms.ContentInfo.Content, 0, signedCms.ContentInfo.Content.Length);
+
+                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + "FullMessage.txt", decodedMessage);
+                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + "Payload.txt", payload);
 
                 #endregion
-
-                string decodedMessage = Encoding.ASCII.GetString(signedCms.ContentInfo.Content, 0, signedCms.ContentInfo.Content.Length);
-
-                if (senderCert.GetPublicKey() == bReceivedSignature)
-                    System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + "txt", decodedMessage);
-                else
-                    System.IO.File.WriteAllText(@"c:\files\Dump\" + filename + "txt", decodedMessage);
-
 
                 if (!string.IsNullOrEmpty(Request.Headers["Disposition-notification-to"].ToString()))
                 {
@@ -105,7 +104,7 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
 
                     byte[] content = Encoding.ASCII.GetBytes(mdnMessage.ToString());
 
-                    content = As2MimeUtilities.Sign(content, recipientCert, out var contentType);
+                    content = As2MimeUtilities.Sign(content, encryptionCert, out var contentType);
 
                     #endregion
 

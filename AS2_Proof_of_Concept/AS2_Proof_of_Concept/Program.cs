@@ -7,21 +7,18 @@ namespace AS2_Proof_of_Concept
     {
         static void Main(string[] args)
         {
-            string path = null;
             string inboundUri = null;
 
             do
             {
                 Console.WriteLine("Where should I send this?");
                 inboundUri = Console.ReadLine();
-                Console.WriteLine("Please enter a directory.");
-                path = Console.ReadLine();
-            } while (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(inboundUri));
+            } while (string.IsNullOrEmpty(inboundUri));
 
             FilePickUp pickUp = new FilePickUp();
             Uri uri = new Uri(inboundUri);
 
-            pickUp.PickUpFiles(uri, path);
+            pickUp.PickUpFiles(uri);
 
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();

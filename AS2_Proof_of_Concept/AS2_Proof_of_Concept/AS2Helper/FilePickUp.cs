@@ -9,10 +9,10 @@ namespace AS2_Proof_of_Concept.AS2Helper
 {
     public class FilePickUp
     {
-        public void PickUpFiles(Uri uri, string path)
+        public void PickUpFiles(Uri uri)
         {
-            DirectoryInfo dirInfo = new DirectoryInfo(path);
-
+            DirectoryInfo dirInfo = new DirectoryInfo(@"C:\files\pickup\");
+            Console.WriteLine("Path: " + dirInfo.FullName);
             FileInfo[] fileInfo = dirInfo.GetFiles();
 
             foreach (var file in fileInfo)
@@ -35,11 +35,11 @@ namespace AS2_Proof_of_Concept.AS2Helper
 
                 byte[] fileData = File.ReadAllBytes(file.FullName);
 
-                const string pwd = "MyPrivateKey";
+                const string pwd = "MyPartnersKey";
                 SecureString securePwd = new SecureString();
                 Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
                 securePwd.MakeReadOnly();
-                X509Certificate2 signingCert = new X509Certificate2(@"C:\\files\\certs\\MyPrivateCert.pfx", securePwd);
+                X509Certificate2 signingCert = new X509Certificate2(@"C:\\files\\certs\\MyPartnersPrivateCert.pfx", securePwd);
                 X509Certificate2 recipientCert = new X509Certificate2(@"C:\\files\certs\\MyPublicCert.cer");
 
                 var send = As2Send.SendFile(uri, file.Name, fileData, "mycompanyAS2", "mendelsontestAS2", settings, 960000, signingCert, recipientCert);
