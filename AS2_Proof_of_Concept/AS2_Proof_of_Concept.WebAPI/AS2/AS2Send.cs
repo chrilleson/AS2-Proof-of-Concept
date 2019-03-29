@@ -66,8 +66,8 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("Recipient-adress", uri.ToString());
             http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
-            http.Headers.Add("Disposition-notification-to", sender);
-            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, md5");
+            http.Headers.Add("Disposition-notification-to", uri.ToString());
+            http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha256");
             http.Timeout = timeoutMs;
 
             string contentType = (Path.GetExtension(filename) == ".xml") ? "application/xml" : "application/EDIFACT";
@@ -110,9 +110,9 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
             SendWebRequest(http, content);
 
-            byte[] encodedUnencryptedMessage = As2Encryption.Decrypt(content, recipientCert);
+            byte[] encodedUnencryptedMessage = new byte[0];
 
-            return HandleWebResponse(http, encodedUnencryptedMessage);
+            return HandleWebResponse(http/*, encodedUnencryptedMessage*/);
         }
 
         public static void SendWebRequest(HttpWebRequest http, byte[] fileData)
@@ -123,7 +123,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             oRequestStream.Close();
         }
 
-        private static HttpStatusCode HandleWebResponse(HttpWebRequest http, byte[] encodedUnencryptedMessage)
+        private static HttpStatusCode HandleWebResponse(HttpWebRequest http/*, byte[] encodedUnencryptedMessage*/)
         {
             try
             {
@@ -139,7 +139,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 if (string.IsNullOrEmpty(mdnHeaders) || string.IsNullOrEmpty(mdnResponse))
                     throw new WebException();
 
-                bool mdnVerification = MdnVerification(mdnResponse, encodedUnencryptedMessage, http);
+                bool mdnVerification = MdnVerification(mdnResponse, /*encodedUnencryptedMessage,*/ http);
 
                 //If the MDN is verified it will be stored in the verified folder
                 if (mdnVerification)
@@ -166,28 +166,28 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         /****** MDN gets verified 2/3 ways according to
          * https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *
          ******/
-        private static bool MdnVerification(string mdnMessage, byte[] encodedUnencryptedMessage, HttpWebRequest http)
+        private static bool MdnVerification(string mdnMessage, /*byte[] encodedUnencryptedMessage,*/ HttpWebRequest http)
         {
             #region MicCheck
 
             //Calculates the senders MIC
-            string messageDigest = http.Headers["Disposition-notification-options"]
-                .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
-                .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
-            string decodedMessage =
-                Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
+            //string messageDigest = http.Headers["Disposition-notification-options"]
+            //    .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
+            //    .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
+            //string decodedMessage =
+            //    Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
 
-            string calculatedMic = As2Encryption.CalculateMic(decodedMessage, messageDigest);
+            //string calculatedMic = As2Encryption.CalculateMic(decodedMessage, messageDigest);
 
-            //Retrieves the calculated MIC value that's inside of the MDN
-            int micStart = mdnMessage.IndexOf("MIC: ", StringComparison.Ordinal);
-            micStart += 5;
-            int micEnd = mdnMessage.IndexOf(messageDigest, StringComparison.Ordinal);
-            micEnd = micEnd - 2;
-            int micLength = micEnd - micStart;
-            string receivedMic = mdnMessage.Substring(micStart, micLength);
+            ////Retrieves the calculated MIC value that's inside of the MDN
+            //int micStart = mdnMessage.IndexOf("MIC: ", StringComparison.Ordinal);
+            //micStart += 5;
+            //int micEnd = mdnMessage.IndexOf(messageDigest, StringComparison.Ordinal);
+            //micEnd = micEnd - 2;
+            //int micLength = micEnd - micStart;
+            //string receivedMic = mdnMessage.Substring(micStart, micLength);
 
-            bool micVerified = receivedMic == calculatedMic;
+            //bool micVerified = receivedMic == calculatedMic;
 
             #endregion
 
@@ -207,7 +207,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
             #endregion
 
-            return micVerified && messageIdVerified;
+            return /*micVerified && */messageIdVerified;
         }
     }
 }

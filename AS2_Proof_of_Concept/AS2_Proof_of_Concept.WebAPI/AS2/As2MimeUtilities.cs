@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Rewrite.Internal.UrlMatches;
 
 namespace AS2_Proof_of_Concept.WebAPI.AS2
 {
@@ -19,7 +21,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         /// <returns></returns>
         public static string MimeBoundary()
         {
-            return "_" + Guid.NewGuid().ToString("N") + "_";
+            return "_" + Guid.NewGuid().ToString("N");
         }
 
         /// <summary>
@@ -110,9 +112,9 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             {
                 // get boundary and "static" subparts.
                 string sBoundary = MimeBoundary();
-                byte[] bPackageHeader = Encoding.ASCII.GetBytes(MimeHeader(sContentType + "; boundary=\"" + sBoundary + "\"", sEncoding, sDisposition));
-                byte[] bBoundary = Encoding.ASCII.GetBytes("\r\n" + "--" + sBoundary + "\r\n");
-                byte[] bFinalFooter = Encoding.ASCII.GetBytes("\r\n" + "--" + sBoundary + "--" + "\r\n");
+                byte[] bPackageHeader = Encoding.ASCII.GetBytes(MimeHeader(sContentType + "; boundary=\"----=_Part" + sBoundary + "\"", sEncoding, sDisposition));
+                byte[] bBoundary = Encoding.ASCII.GetBytes(Environment.NewLine + "------=_Part" + sBoundary + Environment.NewLine);
+                byte[] bFinalFooter = Encoding.ASCII.GetBytes(Environment.NewLine + "------=_Part" + sBoundary + "--" + Environment.NewLine);
 
                 //Calculate the total size required.
                 iHeaderLength = bPackageHeader.Length;
@@ -161,13 +163,13 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             string sBoundary = MimeBoundary();
 
             // Get the Headers for the entire message.
-            sContentType = "multipart/signed; protocol=\"application/pkcs7-signature\"; micalg=sha-256; boundary=\"" + sBoundary + "\"";
+            sContentType = "multipart/signed; protocol=\"application/pkcs7-signature\"; micalg=sha-256; boundary=\"----=_Part" + sBoundary + "\"";
 
             // Define the boundary byte array.
-            byte[] bBoundary = Encoding.ASCII.GetBytes("\r\n" + "--" + sBoundary + "\r\n");
+            byte[] bBoundary = Encoding.ASCII.GetBytes("\r\n" + "------=_Part" + sBoundary + "\r\n");
 
             // Sign the header for the signature portion.
-            byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("protocol=application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment; filename=\"smime.p7s\""));
+            byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment; filename=\"smime.p7s\""));
 
             // Get the signature.
             byte[] bSignature = As2Encryption.Sign(arMessage, cert);
@@ -177,15 +179,15 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
             //76 character per line limit, see https://tools.ietf.org/html/rfc2045#section-6.8
             var sb = new StringBuilder(wholeText);
-            for (int i = 76; i < sb.Length; i+=78)//76 + "\r\n"
+            for (int i = 76; i < sb.Length; i += 78)//76 + "\r\n"
             {
                 sb.Insert(i, "\r\n");
             }
-            string sig =  sb + MessageSeparator;
+            string sig = sb + Environment.NewLine;
             bSignature = Encoding.ASCII.GetBytes(sig);
 
             // Calculate the final footer elements.
-            byte[] bFinalFooter = Encoding.ASCII.GetBytes("--" + sBoundary + "--" + "\r\n");
+            byte[] bFinalFooter = Encoding.ASCII.GetBytes("------=_Part" + sBoundary + "--" + Environment.NewLine);
 
             // Concatenate all the above together to form the message.
             bInPkcs7 = ConcatBytes(bBoundary, arMessage, bBoundary,
@@ -200,8 +202,8 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         /// </summary>
         public static string ExtractPayload(string message, string boundary)
         {
-            if (!boundary.StartsWith("--"))
-                boundary = "--" + boundary;
+            if (!boundary.StartsWith("------=_Part"))
+                boundary = "------=_Part" + boundary;
 
             int firstBoundary = message.IndexOf(boundary, StringComparison.Ordinal);
             int blankLineAfterBoundary = message.IndexOf(MessageSeparator, firstBoundary, StringComparison.Ordinal) + (MessageSeparator).Length;
@@ -211,14 +213,31 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             return message.Substring(blankLineAfterBoundary, payloadLength);
         }
 
+
+        public static string ExtractSignature(string message, string boundary)
+        {
+            if (!boundary.StartsWith("------=_Part"))
+                boundary = "------=_Part" + boundary;
+
+            int contentTypeHeader = message.IndexOf("Content-Type: application/pkcs7-signature;", StringComparison.Ordinal);
+            int blankLineAfterContentTypeHeader =
+                message.IndexOf(MessageSeparator, contentTypeHeader, StringComparison.Ordinal) +
+                (MessageSeparator).Length;
+            int nextBoundary = message.IndexOf("\r\n" + boundary, blankLineAfterContentTypeHeader,
+                StringComparison.Ordinal);
+            int signatureLength = nextBoundary - blankLineAfterContentTypeHeader;
+
+            return message.Substring(blankLineAfterContentTypeHeader, signatureLength);
+        }
+
         /// <summary>
         /// Extracts the boundary from a Content-Type string
         /// </summary>
-        /// <param name="contentType">e.g: multipart/signed; protocol="application/pkcs7-signature"; micalg="sha1"; boundary="_956100ef6a82431fb98f65ee70c00cb9_"</param>
+        /// <param name="contentType">e.g: multipart/signed; protocol="application/pkcs7-signature"; micalg="sha1"; boundary="----=_Part_956100ef6a82431fb98f65ee70c00cb9_"</param>
         /// <returns>e.g: _956100ef6a82431fb98f65ee70c00cb9_</returns>
         public static string GetBoundaryFromContentType(string contentType)
         {
-            return Trim(contentType, "boundary=\"", "\"");
+            return Trim(contentType, "boundary=\"----=_Part", "\"");
         }
 
         /// <summary>

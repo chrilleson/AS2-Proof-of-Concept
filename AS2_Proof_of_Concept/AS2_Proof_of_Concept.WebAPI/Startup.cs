@@ -34,7 +34,11 @@ namespace AS2_Proof_of_Concept.WebAPI
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+            app.UseMvc(route =>
+            {
+                route.MapRoute("default", "{controller=as2}/{action=Get}");
+                route.MapRoute("Post", "{controller=as2}/{action=IncomingMessage}");
+            });
         }
     }
 }

@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AS2_Proof_of_Concept.WebAPI.Controllers
 {
-    [Route("api/[controller]")]
     public class As2Controller : Controller
     {
         [HttpGet]
@@ -25,12 +24,19 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
         public void IncomingMessage()
         {
 
-            const string pwd = "MyPartnersKey";
+            //const string pwd = "MyPartnersKey";
+            //SecureString securePwd = new SecureString();
+            //Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
+            //securePwd.MakeReadOnly();
+            //X509Certificate2 decryptionCert = new X509Certificate2(@"C:\files\certs\MyPartnersPrivateCert.pfx", securePwd);
+            //X509Certificate2 verifySignatureCert = new X509Certificate2(@"C:\files\certs\MyPublicCert.cer");
+
+            const string pwd = "MyPrivateKey";
             SecureString securePwd = new SecureString();
             Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
             securePwd.MakeReadOnly();
-            X509Certificate2 decryptionCert = new X509Certificate2(@"C:\\files\\certs\\MyPartnersPrivateCert.pfx", securePwd);
-            X509Certificate2 verifySignatureCert = new X509Certificate2(@"C:\\files\\certs\\MyPublicCert.cer");
+            X509Certificate2 decryptionCert = new X509Certificate2(@"C:\files\certs\com01\MyPrivateCert.pfx", securePwd);
+            X509Certificate2 verifySignatureCert = new X509Certificate2(@"C:\files\certs\com01\as2com.edisolutions.se.20190118.cer");
 
             if (Request.ContentLength == null) return;
 
@@ -39,6 +45,9 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
             string filename = Request.Headers["Subject"];
             Request.Body.Read(requestBody, 0, length);
 
+            string as2To = Request.Headers["AS2-To"].ToString();
+            string as2From = Request.Headers["AS2-From"].ToString();
+            string messageId = Request.Headers["Message-Id"].ToString();
 
             try
             {
@@ -47,15 +56,15 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
 
                 #region Extracts and Verifies the signature
 
-                string messageWithContentTypeLineAndMimeHeaders = Encoding.ASCII.GetString(encodedUnencryptedMessage);
+                string decodedMessage = Encoding.ASCII.GetString(encodedUnencryptedMessage);
+
+                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + " Content.txt", decodedMessage);
 
                 // Extracts the signature
-                int firstBlankLineInMessage = messageWithContentTypeLineAndMimeHeaders.IndexOf(Environment.NewLine + Environment.NewLine, StringComparison.Ordinal);
-                string firstContentType = messageWithContentTypeLineAndMimeHeaders.Substring(0, firstBlankLineInMessage);
+                int firstBlankLineInMessage = decodedMessage.IndexOf(Environment.NewLine + Environment.NewLine, StringComparison.Ordinal);
+                string firstContentType = decodedMessage.Substring(0, firstBlankLineInMessage);
                 string getBoundary = As2MimeUtilities.GetBoundaryFromContentType(firstContentType);
-                string innerContent = As2MimeUtilities.ExtractPayload(messageWithContentTypeLineAndMimeHeaders, getBoundary);
-                innerContent = innerContent + "\r\n\r\n--" + getBoundary + "--";
-                string receivedSignature = As2MimeUtilities.ExtractPayload(innerContent, getBoundary);
+                string receivedSignature = As2MimeUtilities.ExtractSignature(decodedMessage, getBoundary);
 
                 //Verifies the signature
                 ContentInfo contentInfo = new ContentInfo(encodedUnencryptedMessage);
@@ -64,17 +73,19 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 signedCms.CheckSignature(new X509Certificate2Collection(verifySignatureCert), true);
 
                 #endregion
-                
+
                 string payload = Encoding.ASCII.GetString(signedCms.ContentInfo.Content, 0, signedCms.ContentInfo.Content.Length);
                 System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + " Payload.txt", payload);
-
-                string decodedMessage = Encoding.ASCII.GetString(encodedUnencryptedMessage, 0, encodedUnencryptedMessage.Length);
-                System.IO.File.WriteAllText(@"c:\files\Dump\Verified\" + filename + " RawMessageDecrypted.txt", decodedMessage);
 
                 #region MDN message
 
                 if (!string.IsNullOrEmpty(Request.Headers["Disposition-notification-to"].ToString()))
                 {
+
+                    //Uri uri = new Uri(Request.Headers["Disposition-notification-to"]);
+                    //HttpWebRequest request = WebRequest.CreateHttp(uri);
+
+
                     #region CalculateMIC
 
                     string messageDigest = Request.Headers["Disposition-notification-options"].ToString()
@@ -86,27 +97,47 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                     #endregion
 
                     #region Create the MDN
-                    
+
                     //Create the content of the MDN message
                     var boundary = As2MimeUtilities.MimeBoundary();
-                    var mdnMessage = new StringBuilder("Content-Type: multipart/report; report-type=disposition-notification; \r\n")
-                        .Append("boundary=\"").Append(boundary).Append("\"\r\n\r\n")
-                        .Append("--").Append(boundary).Append("\r\n")
-                        .Append("Content-Type: text/plain\r\n")
-                        .Append("Content-Transfer-Encoding: 7bit\r\n\r\n")
-                        .Append("The AS2 message has been received.\r\n")
-                        .Append("--").Append(boundary).Append("\r\n")
-                        .Append("Content-Type: message/disposition-notification\r\n")
-                        .Append("Content-Transfer-Encoding: 7bit\r\n\r\n")
-                        .Append("Reporting-UA: Test\r\n")
-                        .Append("Original-Recipient: rfc822; ").Append(Request.Headers["AS2-To"]).Append("\r\n")
-                        .Append("Final-Recipient: rfc822; ").Append(Request.Headers["AS2-From"]).Append("\r\n")
-                        .Append("Original-Message-ID: ").Append(Request.Headers["Message-Id"]).Append("\r\n")
-                        .Append("Disposition: automatic-action/MDN-sent-automatically; processed\r\n")
-                        .Append("Received-Content-MIC: ").Append(calculatedMic).Append(", ").Append(messageDigest).Append("\r\n\r\n")
-                        .Append("--").Append(boundary).Append("--").Append("\r\n\r\n");
 
-                    byte[] content = Encoding.ASCII.GetBytes(mdnMessage.ToString());
+                    string mdnMessage =
+                        $"Content-Type: multipart/report; report-type=disposition-notification;{Environment.NewLine}"
+                        + $"boundary=\"{boundary}\"{Environment.NewLine}{Environment.NewLine}"
+                        + $"------=_Part{boundary}{Environment.NewLine}"
+                        + $"Content-Type: text/plain{Environment.NewLine}"
+                        + $"Content-Transfer-Encoding: 7bit{Environment.NewLine}{Environment.NewLine}"
+                        + $"The AS2 message has been received.{Environment.NewLine}"
+                        + $"------=_Part{boundary}{Environment.NewLine}"
+                        + $"Content-Type: message/disposition-notification{Environment.NewLine}"
+                        + $"Content-Transfer-Encoding: 7bit{Environment.NewLine}{Environment.NewLine}"
+                        + $"Reporting-UA: ChrisAS2Test{Environment.NewLine}"
+                        + $"Original-Recipient: rfc822; {as2To}{Environment.NewLine}"
+                        + $"Final-Recipient: rfc822; {as2To}{Environment.NewLine}"
+                        + $"Original-Message-ID: {messageId}{Environment.NewLine}"
+                        + $"Disposition: automatic-action/MDN-sent-automatically; processed{Environment.NewLine}"
+                        + $"Received-Content-MIC: {calculatedMic}, {messageDigest}{Environment.NewLine}{Environment.NewLine}"
+                        + $"------=_Part{boundary}--{Environment.NewLine}{Environment.NewLine}";
+
+                    //var mdnMessage = new StringBuilder
+                    //   ("Content-Type: multipart/report; report-type=disposition-notification; \r\n")
+                    //    .Append("boundary=\"").Append(boundary).Append("\"\r\n\r\n")
+                    //    .Append("--").Append(boundary).Append("\r\n")
+                    //    .Append("Content-Type: text/plain\r\n")
+                    //    .Append("Content-Transfer-Encoding: 7bit\r\n\r\n")
+                    //    .Append("The AS2 message has been received.\r\n")
+                    //    .Append("--").Append(boundary).Append("\r\n")
+                    //    .Append("Content-Type: message/disposition-notification\r\n")
+                    //    .Append("Content-Transfer-Encoding: 7bit\r\n\r\n")
+                    //    .Append("Reporting-UA: Test\r\n")
+                    //    .Append("Original-Recipient: rfc822; ").Append(as2To).Append("\r\n")
+                    //    .Append("Final-Recipient: rfc822; ").Append(as2To).Append("\r\n")
+                    //    .Append("Original-Message-ID: ").Append(Request.Headers["Message-Id"]).Append("\r\n")
+                    //    .Append("Disposition: automatic-action/MDN-sent-automatically; processed\r\n")
+                    //    .Append("Received-Content-MIC: ").Append(calculatedMic).Append(", ").Append(messageDigest).Append("\r\n\r\n")
+                    //    .Append("--").Append(boundary).Append("--").Append("\r\n\r\n");
+
+                    byte[] content = Encoding.ASCII.GetBytes(mdnMessage);
 
                     content = As2MimeUtilities.Sign(content, decryptionCert, out var contentType);
 
@@ -118,9 +149,9 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                     Response.Headers["MIME-Version"] = "1.0";
                     Response.Headers["AS2-Version"] = "1.2";
                     Response.Headers["Subject"] = "AS2 MDN";
-                    Response.Headers["Message-ID"] = Request.Headers["Message-ID"];
-                    Response.Headers["AS2-To"] = Request.Headers["AS2-From"];
-                    Response.Headers["AS2-From"] = Request.Headers["AS2-To"];
+                    Response.Headers["Message-ID"] = "<AS2_" + DateTime.Now.ToString("g") + ">";
+                    Response.Headers.Add("as2-to", as2From);
+                    Response.Headers.Add("as2-from", as2To);
 
                     #endregion
 
