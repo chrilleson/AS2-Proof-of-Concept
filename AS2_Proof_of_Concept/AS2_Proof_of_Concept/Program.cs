@@ -5,9 +5,9 @@ namespace AS2_Proof_of_Concept
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
-            string inboundUri = null;
+            string inboundUri;
 
             do
             {

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Rewrite.Internal.UrlMatches;
 
 namespace AS2_Proof_of_Concept.WebAPI.AS2
 {
@@ -196,24 +194,50 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             return bInPkcs7;
         }
 
-        /// <summary>
-        /// Extracts the payload from a signed message, by looking for boundaries
-        /// Ignores signatures and does checking - should really validate the signature
-        /// </summary>
-        public static string ExtractPayload(string message, string boundary)
+        public static byte[] MdnSignature(byte[] arMessage, X509Certificate2 signingCert, out string sContentType)
         {
-            if (!boundary.StartsWith("------=_Part"))
-                boundary = "------=_Part" + boundary;
+            byte[] bInPkcs7;
 
-            int firstBoundary = message.IndexOf(boundary, StringComparison.Ordinal);
-            int blankLineAfterBoundary = message.IndexOf(MessageSeparator, firstBoundary, StringComparison.Ordinal) + (MessageSeparator).Length;
-            int nextBoundary = message.IndexOf(MessageSeparator + boundary, blankLineAfterBoundary, StringComparison.Ordinal);
-            int payloadLength = nextBoundary - blankLineAfterBoundary;
+            // get a MIME boundary
+            string sBoundary = MimeBoundary();
 
-            return message.Substring(blankLineAfterBoundary, payloadLength);
+            // Get the Headers for the entire message.
+            sContentType = "multipart/signed; protocol=\"application/pkcs7-signature\"; micalg=sha1; boundary=\"----=_Part" + sBoundary + "\"";
+
+            // Define the boundary byte array.
+            byte[] bBoundary = Encoding.ASCII.GetBytes("------=_Part" + sBoundary + "\r\n");
+
+            // Sign the header for the signature portion.
+            byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment; filename=\"smime.p7s\""));
+
+            // Get the signature.
+            byte[] bSignature = As2Encryption.Sign(arMessage, signingCert);
+
+            // convert to base64
+            var wholeText = Convert.ToBase64String(bSignature);
+
+            //76 character per line limit, see https://tools.ietf.org/html/rfc2045#section-6.8
+            var sb = new StringBuilder(wholeText);
+            for (int i = 76; i < sb.Length; i += 78)//76 + "\r\n"
+            {
+                sb.Insert(i, "\r\n");
+            }
+            string sig = sb + Environment.NewLine;
+            bSignature = Encoding.ASCII.GetBytes(sig);
+
+            // Calculate the final footer elements.
+            byte[] bFinalFooter = Encoding.ASCII.GetBytes("------=_Part" + sBoundary + "--" + Environment.NewLine);
+
+            // Concatenate all the above together to form the message.
+            bInPkcs7 = ConcatBytes(bBoundary, arMessage, bBoundary,
+                bSignatureHeader, bSignature, bFinalFooter);
+
+            return bInPkcs7;
         }
 
-
+        /// <summary>
+        /// Extracts the signature, by looking for the signatures content-type
+        /// </summary>
         public static string ExtractSignature(string message, string boundary)
         {
             if (!boundary.StartsWith("------=_Part"))

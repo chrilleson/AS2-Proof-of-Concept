@@ -53,18 +53,18 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.PreAuthenticate = false; //Means there will be two requests sent if Authentication required.
             http.SendChunked = false;
 
-            http.UserAgent = "Test Agent";
+            http.UserAgent = "ChrisAS2Test";
 
 
             //These Headers are common receiver all transactions
             http.Headers.Add("Mime-Version", "1.0");
             http.Headers.Add("AS2-Version", "1.2");
-            http.Headers.Add("AS2-From", sender);
-            http.Headers.Add("AS2-To", receiver);
+            http.Headers.Add("as2-from", sender);
+            http.Headers.Add("as2-to", receiver);
             http.Headers.Add("Subject", filename + " transmission");
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
             http.Headers.Add("Recipient-adress", uri.ToString());
-            http.Headers.Add("Message-ID", "<AS2_" + DateTime.Now.ToString("g") + ">");
+            http.Headers.Add("Message-ID", $"<AS2_{DateTime.Now:g}@{sender}_{receiver}>");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
             http.Headers.Add("Disposition-notification-to", uri.ToString());
             http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha256");
@@ -110,9 +110,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
             SendWebRequest(http, content);
 
-            byte[] encodedUnencryptedMessage = new byte[0];
-
-            return HandleWebResponse(http/*, encodedUnencryptedMessage*/);
+            return HandleWebResponse(http);
         }
 
         public static void SendWebRequest(HttpWebRequest http, byte[] fileData)
@@ -123,7 +121,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             oRequestStream.Close();
         }
 
-        private static HttpStatusCode HandleWebResponse(HttpWebRequest http/*, byte[] encodedUnencryptedMessage*/)
+        public static HttpStatusCode HandleWebResponse(HttpWebRequest http)
         {
             try
             {
@@ -139,7 +137,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 if (string.IsNullOrEmpty(mdnHeaders) || string.IsNullOrEmpty(mdnResponse))
                     throw new WebException();
 
-                bool mdnVerification = MdnVerification(mdnResponse, /*encodedUnencryptedMessage,*/ http);
+                bool mdnVerification = MdnVerification(mdnResponse, http);
 
                 //If the MDN is verified it will be stored in the verified folder
                 if (mdnVerification)
@@ -166,7 +164,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         /****** MDN gets verified 2/3 ways according to
          * https://docs.microsoft.com/en-us/biztalk/core/mdn-messages *
          ******/
-        private static bool MdnVerification(string mdnMessage, /*byte[] encodedUnencryptedMessage,*/ HttpWebRequest http)
+        private static bool MdnVerification(string mdnMessage, HttpWebRequest http)
         {
             #region MicCheck
 

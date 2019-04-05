@@ -37,7 +37,7 @@ namespace AS2_Proof_of_Concept.WebAPI
             app.UseMvc(route =>
             {
                 route.MapRoute("default", "{controller=as2}/{action=Get}");
-                route.MapRoute("Post", "{controller=as2}/{action=IncomingMessage}");
+                route.MapRoute("IncomingMessage", "{controller=as2}/{action=IncomingMessage}");
             });
         }
     }
