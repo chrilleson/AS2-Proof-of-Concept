@@ -434,7 +434,7 @@
           "ref/netstandard1.3/_._": {}
         }
       },
-      "MimeKit/2.1.3": {
+      "MimeKit/2.1.4": {
         "type": "package",
         "dependencies": {
           "NETStandard.Library": "1.6.1",
@@ -894,6 +894,39 @@
         },
         "runtime": {
           "lib/netstandard1.2/System.Data.Common.dll": {}
+        }
+      },
+      "System.Data.SQLite/1.0.110": {
+        "type": "package",
+        "dependencies": {
+          "System.Data.SQLite.Core": "1.0.110"
+        }
+      },
+      "System.Data.SQLite.Core/1.0.110": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/System.Data.SQLite.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.Data.SQLite.dll": {}
+        },
+        "runtimeTargets": {
+          "runtimes/linux-x64/native/netstandard2.0/SQLite.Interop.dll": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/osx-x64/native/netstandard2.0/SQLite.Interop.dll": {
+            "assetType": "native",
+            "rid": "osx-x64"
+          },
+          "runtimes/win-x64/native/netstandard2.0/SQLite.Interop.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/netstandard2.0/SQLite.Interop.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
         }
       },
       "System.Diagnostics.Contracts/4.3.0": {
@@ -2163,6 +2196,8 @@
         "dependencies": {
           "Microsoft.NETCore.App": "2.1.0",
           "Microsoft.VisualStudio.Web.CodeGeneration.Design": "2.1.1",
+          "MimeKit": "2.1.4",
+          "System.Data.SQLite": "1.0.110",
           "System.Security.Cryptography.Pkcs": "4.5.2"
         },
         "compile": {
@@ -2943,10 +2978,10 @@
         "ref/xamarinwatchos10/_._"
       ]
     },
-    "MimeKit/2.1.3": {
-      "sha512": "cUbGP7GvOOgeoRn3IPOL5I315J4GQfIPtQhIUWp5rdVTmvyzVZRbqC/WhoLrzbk3Xn350XI5iwwtLXKEfNYHKQ==",
+    "MimeKit/2.1.4": {
+      "sha512": "YmHOxOBDnsQG1NLRZBdX3/pzCt6SGCORe5GY/pT4F4BRridbFzB5iddi4wuoU/xKQEFH3dkEnI0+7tbsZ9sVmA==",
       "type": "package",
-      "path": "mimekit/2.1.3",
+      "path": "mimekit/2.1.4",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2970,7 +3005,7 @@
         "lib/xamarinios/BouncyCastle.dll",
         "lib/xamarinios/MimeKit.dll",
         "lib/xamarinios/MimeKit.xml",
-        "mimekit.2.1.3.nupkg.sha512",
+        "mimekit.2.1.4.nupkg.sha512",
         "mimekit.nuspec"
       ]
     },
@@ -3769,6 +3804,65 @@
         "ref/xamarinwatchos10/_._",
         "system.data.common.4.3.0.nupkg.sha512",
         "system.data.common.nuspec"
+      ]
+    },
+    "System.Data.SQLite/1.0.110": {
+      "sha512": "D6+Bub5qmPCwALYnL/3lMPhF+yG55v5Ry0tA0fOMP5mq4aMSDcnqAF2bfwsLBBjgAaFNxIS3NXgm7IvqJQ7hqw==",
+      "type": "package",
+      "path": "system.data.sqlite/1.0.110",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "system.data.sqlite.1.0.110.nupkg.sha512",
+        "system.data.sqlite.nuspec"
+      ]
+    },
+    "System.Data.SQLite.Core/1.0.110": {
+      "sha512": "bFx7Jnn/AlfVobpTnKreroh8jItM4eyLz/ZQRhzxYHZ71gqlGgU8y2nSNFnqVaSNu2bAWBf6m3yNyvp9uIhOoA==",
+      "type": "package",
+      "path": "system.data.sqlite.core/1.0.110",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/net20/System.Data.SQLite.Core.targets",
+        "build/net20/x64/SQLite.Interop.dll",
+        "build/net20/x86/SQLite.Interop.dll",
+        "build/net40/System.Data.SQLite.Core.targets",
+        "build/net40/x64/SQLite.Interop.dll",
+        "build/net40/x86/SQLite.Interop.dll",
+        "build/net45/System.Data.SQLite.Core.targets",
+        "build/net45/x64/SQLite.Interop.dll",
+        "build/net45/x86/SQLite.Interop.dll",
+        "build/net451/System.Data.SQLite.Core.targets",
+        "build/net451/x64/SQLite.Interop.dll",
+        "build/net451/x86/SQLite.Interop.dll",
+        "build/net46/System.Data.SQLite.Core.targets",
+        "build/net46/x64/SQLite.Interop.dll",
+        "build/net46/x86/SQLite.Interop.dll",
+        "lib/net20/System.Data.SQLite.dll",
+        "lib/net20/System.Data.SQLite.dll.config",
+        "lib/net20/System.Data.SQLite.xml",
+        "lib/net40/System.Data.SQLite.dll",
+        "lib/net40/System.Data.SQLite.dll.config",
+        "lib/net40/System.Data.SQLite.xml",
+        "lib/net45/System.Data.SQLite.dll",
+        "lib/net45/System.Data.SQLite.dll.config",
+        "lib/net45/System.Data.SQLite.xml",
+        "lib/net451/System.Data.SQLite.dll",
+        "lib/net451/System.Data.SQLite.dll.config",
+        "lib/net451/System.Data.SQLite.xml",
+        "lib/net46/System.Data.SQLite.dll",
+        "lib/net46/System.Data.SQLite.dll.config",
+        "lib/net46/System.Data.SQLite.xml",
+        "lib/netstandard2.0/System.Data.SQLite.dll",
+        "lib/netstandard2.0/System.Data.SQLite.dll.config",
+        "lib/netstandard2.0/System.Data.SQLite.xml",
+        "runtimes/linux-x64/native/netstandard2.0/SQLite.Interop.dll",
+        "runtimes/osx-x64/native/netstandard2.0/SQLite.Interop.dll",
+        "runtimes/win-x64/native/netstandard2.0/SQLite.Interop.dll",
+        "runtimes/win-x86/native/netstandard2.0/SQLite.Interop.dll",
+        "system.data.sqlite.core.1.0.110.nupkg.sha512",
+        "system.data.sqlite.core.nuspec"
       ]
     },
     "System.Diagnostics.Contracts/4.3.0": {
@@ -7324,7 +7418,8 @@
     ".NETCoreApp,Version=v2.1": [
       "AS2_Proof_of_Concept.WebAPI >= 1.0.0",
       "Microsoft.NETCore.App >= 2.1.0",
-      "MimeKit >= 2.1.3",
+      "MimeKit >= 2.1.4",
+      "System.Data.SQLite >= 1.0.110",
       "System.Security.Cryptography.Pkcs >= 4.5.2"
     ]
   },
@@ -7380,7 +7475,11 @@
           },
           "MimeKit": {
             "target": "Package",
-            "version": "[2.1.3, )"
+            "version": "[2.1.4, )"
+          },
+          "System.Data.SQLite": {
+            "target": "Package",
+            "version": "[1.0.110, )"
           },
           "System.Security.Cryptography.Pkcs": {
             "target": "Package",

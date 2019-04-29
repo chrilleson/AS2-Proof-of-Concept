@@ -66,7 +66,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("Recipient-adress", uri.ToString());
             http.Headers.Add("Message-ID", $"<AS2_{DateTime.Now:g}@{sender}_{receiver}>");
             //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
-            http.Headers.Add("Disposition-notification-to", uri.ToString());
+            http.Headers.Add("Disposition-notification-to", "http://21d5a032.ngrok.io/");
             http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha256");
             http.Timeout = timeoutMs;
 
@@ -102,7 +102,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
 
                 content = As2Encryption.Encrypt(contentWithContentTypeHeaderAdded, recipientCert, EncryptionAlgorithm.Des3);
 
-                contentType = "application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"";
+                contentType = "application/pkcs7-mime smime-type=enveloped-data; name=\"smime.p7m\"";
             }
 
             http.ContentType = contentType;
@@ -143,7 +143,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
                 if (mdnVerification)
                 {
                     File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + " MDN.MDN", mdnResponse);
-                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\" + http.Headers["Subject"] + " Headers.MDN", mdnHeaders);
+                    File.WriteAllText(@"c:\files\MDN\VerifiedMDN\Headers\" + http.Headers["Subject"] + " Headers.MDN", mdnHeaders);
                 }
                 else
                 {
