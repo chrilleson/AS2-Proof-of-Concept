@@ -19,6 +19,7 @@
     "AS2_Proof_of_Concept.WebAPI": {
       "commandName": "Project",
       "launchBrowser": true,
+      "launchUrl": "api/MimeKit",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

@@ -167,7 +167,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             byte[] bBoundary = Encoding.ASCII.GetBytes("\r\n" + "------=_Part" + sBoundary + "\r\n");
 
             // Sign the header for the signature portion.
-            byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment; filename=\"smime.p7s\""));
+            byte[] bSignatureHeader = Encoding.ASCII.GetBytes(MimeHeader("application/pkcs7-signature; name=\"smime.p7s\"", "base64", "attachment filename=\"smime.p7s\""));
 
             // Get the signature.
             byte[] bSignature = As2Encryption.Sign(arMessage, cert);
@@ -225,9 +225,12 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             string sig = sb + Environment.NewLine;
             bSignature = Encoding.ASCII.GetBytes(sig);
             
+            // Calculate the final footer elements.
+            byte[] bFinalFooter = Encoding.ASCII.GetBytes("------=_Part" + sBoundary + "--" + Environment.NewLine);
+
             // Concatenate all the above together to form the message.
             bInPkcs7 = ConcatBytes(bBoundary, arMessage, bBoundary,
-                bSignatureHeader, bSignature);
+                bSignatureHeader, bSignature, bFinalFooter);
 
             return bInPkcs7;
         }

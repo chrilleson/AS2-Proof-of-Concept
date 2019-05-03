@@ -83,7 +83,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             if (sign)
             {
                 // Wrap the file data with a mime header
-                content = As2MimeUtilities.CreateMessage(contentType, "binary", "attachment; filename= " + filename, content);
+                content = As2MimeUtilities.CreateMessage(contentType, "binary", "attachment filename= " + filename, content);
 
                 content = As2MimeUtilities.Sign(content, signingCert, out contentType);
 

@@ -17,7 +17,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
         internal static byte[] Sign(byte[] arMessage, X509Certificate2 signingCert)
         {
             ContentInfo contentInfo = new ContentInfo(arMessage);
-            SignedCms signedCms = new SignedCms(contentInfo, true); // <- true detaches the signature
+            SignedCms signedCms = new SignedCms(contentInfo, false); // <- true detaches the signature
             CmsSigner cmsSigner = new CmsSigner(signingCert)
             {
                 IncludeOption = X509IncludeOption.WholeChain

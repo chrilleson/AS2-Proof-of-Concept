@@ -44,8 +44,8 @@ namespace AS2_Proof_of_Concept.AS2Helper
                 SecureString securePwd = new SecureString();
                 Array.ForEach(pwd.ToArray(), securePwd.AppendChar);
                 securePwd.MakeReadOnly();
-                X509Certificate2 signingCert = new X509Certificate2(@"C:\files\certs\com01\MyPrivateCert.pfx", securePwd);
-                X509Certificate2 recipientCert = new X509Certificate2(@"C:\files\certs\MyPartnersPublicCert.cer");
+                X509Certificate2 signingCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPrivateCert.pfx", securePwd);
+                X509Certificate2 recipientCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPartnersPublicCert.cer");
 
                 var send = As2Send.SendFile(uri, file.Name, fileData, "ChrisAS2Partner", "ChrisAS2Station", settings, 960000, signingCert, recipientCert);
                 Console.WriteLine($"\nStatus code: {send}");
