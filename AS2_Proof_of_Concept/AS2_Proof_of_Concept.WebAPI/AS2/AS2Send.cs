@@ -65,8 +65,7 @@ namespace AS2_Proof_of_Concept.WebAPI.AS2
             http.Headers.Add("Date", DateTime.Now.ToString("R"));
             http.Headers.Add("Recipient-adress", uri.ToString());
             http.Headers.Add("Message-ID", $"<AS2_{DateTime.Now:g}@{sender}_{receiver}>");
-            //  Add for ASYNC MDN  http.Headers.Add("Receipt-delivery-option", "");
-            http.Headers.Add("Disposition-notification-to", "http://21d5a032.ngrok.io/");
+            http.Headers.Add("Disposition-notification-to", "");
             http.Headers.Add("Disposition-notification-options", "signed-receipt-protocol=optional, pkcs7-signature; signed-receipt-micalg=optional, sha256");
             http.Timeout = timeoutMs;
 

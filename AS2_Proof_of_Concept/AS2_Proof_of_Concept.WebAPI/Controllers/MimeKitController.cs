@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,8 +21,8 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
 
         private readonly X509Certificate2 _myPartnersPrivateCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPartnersPrivateCert.pfx", "MyPartnersKey");
         private readonly X509Certificate2 _myPrivateCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPrivateCert.pfx", "MyPrivateKey");
-        private readonly X509Certificate2 _verifySignatureCertMyCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPublicCert.cer");
-        private readonly X509Certificate2 _verifySignatureCertCom01 = new X509Certificate2(@"C:\files\certs\com01\as2com.edisolutions.se.20190118.cer");
+        private readonly X509Certificate2 _myPartnersPublicCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPartnersPublicCert.cer");
+        private readonly X509Certificate2 _myPublicCert = new X509Certificate2(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPublicCert.cer");
 
         private void ImportCertificates()
         {
@@ -30,18 +30,18 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_myPartnersPrivateCert);
             var bouncyMyPrivateCert =
                 Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_myPrivateCert);
-            var bouncyVerifySignatureCertMyCert =
-                Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_verifySignatureCertMyCert);
-            var bouncyVerifySignatureCertCom01 =
-                Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_verifySignatureCertCom01);
+            var bouncyMyPartnerPublicCert =
+                Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_myPartnersPublicCert);
+            var bouncyMyPublicCert =
+                Org.BouncyCastle.Security.DotNetUtilities.FromX509Certificate(_myPublicCert);
 
             List<Org.BouncyCastle.X509.X509Certificate> x509Certificates =
                 new List<Org.BouncyCastle.X509.X509Certificate>
                 {
                     bouncyMyPartnersPrivateCert,
                     bouncyMyPrivateCert,
-                    bouncyVerifySignatureCertMyCert,
-                    bouncyVerifySignatureCertCom01
+                    bouncyMyPartnerPublicCert,
+                    bouncyMyPublicCert,
                 };
 
             foreach (var x509Certificate in x509Certificates)
@@ -78,17 +78,12 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
             {
                 #region Decrypt
 
-                var encrypted = new StringBuilder("Content-Type: ").Append(Request.Headers["Content-Type"]).Append(Environment.NewLine);
-                encrypted.Append("Content-disposition: ").Append(Request.Headers["Content-disposition"])
-                    .Append(Environment.NewLine);
-                encrypted.Append(("Content-Transfer-Encoding: ")).Append(Request.Headers["Content-Transfer-Encoding"])
-                    .Append(Environment.NewLine + Environment.NewLine);
+                byte[] decodedMessage = As2Encryption.Decrypt(requestBody, _myPartnersPrivateCert);
+                MemoryStream mStream = new MemoryStream(decodedMessage);
+                var decrypted = MimeMessage.Load(mStream).Body;
 
-                var encryptedBytes = Encoding.ASCII.GetBytes(encrypted.ToString()).Concat(requestBody).ToArray();
-
-                var decrypted = (MimeMessage.Load(new MemoryStream(encryptedBytes)).Body as ApplicationPkcs7Mime)?.Decrypt();
-
-                using (var o = System.IO.File.OpenWrite(@"c:\files\Dump\MimeKit\" + filename + " RawMessageDecrypted.txt"))
+                using (var o =
+                    System.IO.File.OpenWrite(@"c:\files\Dump\MimeKit\" + filename + " RawMessageDecrypted.txt"))
                     decrypted?.WriteTo(o);
 
                 #endregion
@@ -96,28 +91,51 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
                 #region Verify Signature
 
                 var signed = decrypted as MultipartSigned;
-                if (signed == null) return;
 
-                if (!signed.Verify().First().Verify())
-                    throw new CryptographicException();
+                if (signed != null)
+                {
+                    using (var ctx = new TemporarySecureMimeContext())
+                    {
+                        foreach (var signatures in signed.Verify(ctx))
+                        {
+                            try
+                            {
+                                bool isValid = signatures.Verify();
+
+                                if (isValid)
+                                    using (var o =
+                                        System.IO.File.OpenWrite(
+                                            @"c:\files\Dump\MimeKit\Verified\" + filename + " Payload.txt"))
+                                        signed[0].WriteTo(o);
+                            }
+                            catch (DigitalSignatureVerifyException ex)
+                            {
+                                string error = ex.Message + Environment.NewLine + Environment.NewLine + ex.StackTrace +
+                                               Environment.NewLine + Environment.NewLine + ex.InnerException?.Message;
+                                System.IO.File.WriteAllText($"c:\\files\\ErrorCheck\\{filename} error.txt", error);
+                            }
+
+                        }
+                    }
+                }
 
                 #endregion
 
                 #region Calculate MIC
 
-                var decodedMsg = signed.First().ToString();
+                var decodedMsg = signed?.First().ToString();
                 string digestAlg = Request.Headers["Disposition-notification-options"].ToString()
                     .Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries)[1]
                     .Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)[1];
 
-                string calculatedMic = As2Encryption.CalculateMic(decodedMsg, digestAlg);                
+                string calculatedMic = As2Encryption.CalculateMic(decodedMsg, digestAlg);
 
                 #endregion
 
                 #region Create MDN
 
                 var aReportParts = new MultipartReport("disposition-notification");
-                var aTextPart = new TextPart()
+                var aTextPart = new TextPart
                 {
                     ContentTransferEncoding = ContentEncoding.SevenBit,
                     Content = new MimeContent(
@@ -136,31 +154,33 @@ namespace AS2_Proof_of_Concept.WebAPI.Controllers
 
                 var mdnContent = new MemoryStream();
                 h1.WriteTo(mdnContent);
-                var aReportPart = new MessageDispositionNotification()
+                var aReportPart = new MessageDispositionNotification
                 {
                     Content = new MimeContent(mdnContent)
                 };
                 aReportParts.Add(aTextPart);
                 aReportParts.Add(aReportPart);
 
-                var headerAndBody = MultipartSigned.Create(_ctxMySecureMimeContext, new CmsSigner(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPartnersPrivateCert.pfx", "MyPartnersKey"), aReportParts).ToString();
+                var fullMessage = MultipartSigned.Create(_ctxMySecureMimeContext, new CmsSigner(@"C:\Users\chris\source\repos\AS2 Proof of Concept\AS2_Proof_of_Concept\AS2_Proof_of_Concept.WebAPI\certs\MyPrivateCert.pfx", "MyPrivateKey"), aReportParts).ToString();
 
                 mdnContent.Close();
 
-                Response.Headers.Add("as2-to", "ChrisAS2Station");
-                Response.Headers.Add("as2-from", "ChrisAS2Partner");
-
-                var contentType = headerAndBody.Split(new[] { Environment.NewLine + Environment.NewLine },
+                var contentType = fullMessage.Split(new[] { Environment.NewLine + Environment.NewLine },
                     StringSplitOptions.RemoveEmptyEntries)[0];
-                var content = Encoding.ASCII.GetBytes(headerAndBody.Replace(contentType, "")
-                    .Substring((Environment.NewLine + Environment.NewLine).Count()));
+
+                var content = Encoding.ASCII.GetBytes(fullMessage.Replace(contentType, "")
+                    .Substring((Environment.NewLine + Environment.NewLine).Length));
+
                 Response.ContentType = contentType.Replace(Environment.NewLine + "\t", " ")
                     .Split(new[] { ": " }, StringSplitOptions.RemoveEmptyEntries)[1];
                 Response.ContentLength = content.Length;
 
                 System.IO.File.WriteAllText($"c:\\files\\MDN\\MimeKit\\{filename} MDN.MDN", Encoding.ASCII.GetString(content));
 
-                Response.Body.Write(content, 0, content.Length);                
+                Response.Headers.Add("as2-to", "ChrisAS2Station");
+                Response.Headers.Add("as2-from", "ChrisAS2Partner");
+
+                Response.Body.Write(content, 0, content.Length);
 
                 #endregion
             }
