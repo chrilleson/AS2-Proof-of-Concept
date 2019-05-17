@@ -18,7 +18,7 @@ namespace AS2_Proof_of_Concept.WebAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Latest);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,8 +36,7 @@ namespace AS2_Proof_of_Concept.WebAPI
             app.UseHttpsRedirection();
             app.UseMvc(route =>
             {
-                route.MapRoute("default", "{controller=as2}/{action=Get}");
-                route.MapRoute("IncomingMessage", "{controller=as2}/{action=IncomingMessage}");
+                route.MapRoute("default", "{controller=MimeKit}/{action=Get}");
             });
         }
     }
